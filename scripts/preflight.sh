@@ -44,7 +44,7 @@ if command -v docker >/dev/null 2>&1; then
     echo "FAIL docker-compose     Docker Compose 不可用"
     failures=$((failures + 1))
   fi
-  image="${PAIRWISE_CLAUDE_IMAGE:-claude-eval-runtime:prepared-2.1.269}"
+  image="${PAIRWISE_CLAUDE_IMAGE:-claude-eval-runtime:claude-2.1.269-tools}"
   if docker image inspect "$image" >/dev/null 2>&1; then
     echo "OK   claude-image       $image"
   else

@@ -2,7 +2,7 @@
 
 ## 1. 适用环境
 
-当前版本面向 macOS，使用 Terminal、GNU Screen、Docker Desktop 和 Google Chrome。建议使用与 Claude Docker 镜像相同架构的电脑；当前默认镜像 `claude-eval-runtime:claude-2.1.269` 为 Apple Silicon `arm64` 镜像。
+当前版本面向 macOS，使用 Terminal、GNU Screen、Docker Desktop 和 Google Chrome。建议使用与 Claude Docker 镜像相同架构的电脑；本次迁移使用的 `claude-eval-runtime:claude-2.1.269-tools` 是 Apple Silicon `arm64` 镜像。
 
 需要提前安装并登录：
 
@@ -26,32 +26,32 @@ Claude 容器从 `~/.claude/settings.json` 的 `env.ANTHROPIC_AUTH_TOKEN` 或 `e
 
 ## 2. 准备 Claude Docker 镜像
 
-目标电脑必须先存在基础 Claude 镜像：
+原电脑实际使用的是完整工具镜像 `claude-eval-runtime:claude-2.1.269-tools`，而不是旧文档中的 `claude-eval-runtime:claude-2.1.269`。目标电脑应先导入这个精确镜像标签：
 
 ```bash
-docker image inspect claude-eval-runtime:claude-2.1.269
+docker image inspect claude-eval-runtime:claude-2.1.269-tools
 ```
 
-安装脚本会基于该镜像构建 `claude-eval-runtime:prepared-2.1.269`，预装 Python
-venv/pip、Go、pnpm、TypeScript、tsx、Vite、Vitest、CMake、SQLite、编译、压缩和常用网络诊断工具。这样 A/B 新会话可以
-直接安装项目依赖；基础镜像仍保留，便于以后重建预装镜像。也可手动执行：
+此镜像已经包含 Claude CLI、Python pip/venv、Go、pnpm、TypeScript、tsx、Vite 和 Vitest。新机默认使用 `PAIRWISE_CLAUDE_IMAGE_MODE=prebuilt`，安装脚本只验证现有镜像，不会再从缺失的旧基础镜像重新构建。可以先单独验证：
 
 ```bash
 ./scripts/build_claude_runtime.sh
 ```
 
-如果镜像只在原电脑上，可离线迁移：
+镜像不放入 Git 仓库；通过移动硬盘或其他本地传输方式搬运压缩包与校验文件：
 
 ```bash
-# 原电脑
-docker save claude-eval-runtime:claude-2.1.269 | gzip > claude-eval-runtime-2.1.269.tar.gz
+# 原电脑：在有足够空间的目标目录运行
+docker save claude-eval-runtime:claude-2.1.269-tools | gzip -1 > claude-eval-runtime-2.1.269-tools-arm64.tar.gz
+shasum -a 256 claude-eval-runtime-2.1.269-tools-arm64.tar.gz > claude-eval-runtime-2.1.269-tools-arm64.tar.gz.sha256
 
-# 把 tar.gz 复制到目标电脑后
-gunzip -c claude-eval-runtime-2.1.269.tar.gz | docker load
-docker image inspect claude-eval-runtime:claude-2.1.269
+# 把这两个文件复制到新电脑的同一目录后
+shasum -a 256 -c claude-eval-runtime-2.1.269-tools-arm64.tar.gz.sha256
+gunzip -c claude-eval-runtime-2.1.269-tools-arm64.tar.gz | docker load
+docker image inspect claude-eval-runtime:claude-2.1.269-tools
 ```
 
-目标电脑架构不同时应重新构建对应架构镜像，并在 `config.env` 中修改 `PAIRWISE_CLAUDE_IMAGE`。
+目标电脑若不是 Apple Silicon `arm64`，不能直接按本方案使用这个镜像；须取得对应架构的 Claude 基础镜像并用 `PAIRWISE_CLAUDE_IMAGE_MODE=build` 构建，再在 `config.env` 中设置准确的基础与目标标签。不要靠给不同镜像改标签来绕过架构或内容检查。
 
 ## 3. 全新安装
 

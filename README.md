@@ -29,7 +29,7 @@
 
 ## 启动
 
-首次部署运行安装脚本；它会先构建含 Python pip/venv、Go 和常用前端工具的预装开发镜像，再执行依赖预检：
+首次部署先按[镜像迁移步骤](docs/DEPLOYMENT.md#2-准备-claude-docker-镜像)导入当前使用的完整 Claude 开发镜像，再运行安装脚本。安装脚本会校验镜像中的 Claude、Python、Go 和前端工具链，然后执行依赖预检：
 
 ```bash
 chmod +x scripts/*.sh

@@ -21,7 +21,7 @@ python3 scripts/migrate_ready_tasks.py import \
   --baseline-dir "$HOME/Library/Application Support/Claude A-B GSB Console/.data/task-baselines"
 ```
 
-上面的命令只检查题目。检查通过后，使用同样参数并加 `--apply` 导入；重复执行不会重复建题。Feature/Bug 的源代码不在题目包里；导入时从各自的基线仓库拉取并核对精确 SHA，所以新电脑必须能访问这些仓库。按[部署说明](../docs/DEPLOYMENT.md)准备好 Docker Desktop、Claude 基础镜像和本机凭据后，运行 `./scripts/install_launch_agent.sh` 安装程序，核对页面题目池数量，再按需要开启自动流水线。若使用自定义 `PAIRWISE_DATA_DIR`，把上述两个路径改到该目录下。新库默认不自动运行流水线，因此不会在导入前抢占题目。
+上面的命令只检查题目。检查通过后，使用同样参数并加 `--apply` 导入；重复执行不会重复建题。Feature/Bug 的源代码不在题目包里；导入时从各自的基线仓库拉取并核对精确 SHA，所以新电脑必须能访问这些仓库。按[部署说明](../docs/DEPLOYMENT.md#2-准备-claude-docker-镜像)导入实际使用的 `claude-eval-runtime:claude-2.1.269-tools` 镜像，准备好 Docker Desktop 和本机凭据后，运行 `./scripts/install_launch_agent.sh` 安装程序，核对页面题目池数量，再按需要开启自动流水线。若使用自定义 `PAIRWISE_DATA_DIR`，把上述两个路径改到该目录下。新库默认不自动运行流水线，因此不会在导入前抢占题目。
 
 已完成题目以 `archived_dedup` 保存，只参与后续出题查重，不会成为可调度的 `ready` 题；迁入后可在数据库里检查：
 

@@ -8,7 +8,7 @@ from typing import Any, Dict
 APP_NAME = "Claude A/B GSB Console"
 DEFAULT_CODEX_MODEL = "gpt-5.6-terra"
 DEFAULT_CLAUDE_MODEL = "auto_model/urm"
-DEFAULT_CLAUDE_IMAGE = "claude-eval-runtime:prepared-2.1.269"
+DEFAULT_CLAUDE_IMAGE = "claude-eval-runtime:claude-2.1.269-tools"
 MAX_PAIR_PROJECTS = 5
 MAX_CLAUDE_TERMINALS = MAX_PAIR_PROJECTS * 2
 OLD_APP_DIR = Path.home() / "Library/Application Support/Claude Eval Console"
