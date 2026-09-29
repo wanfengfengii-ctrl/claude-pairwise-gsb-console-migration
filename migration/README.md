@@ -1,12 +1,15 @@
 # 仅迁移可用题目
 
-`ready-tasks.json` 是导出时处于 `ready`、尚未绑定 Pair 的题目快照。它只含题面、验收要求、分类/难度、评估元数据，以及 Feature/Bug 题所需的基线仓库 URL 与精确提交 SHA。不含原数据库、Pair、评价、提交状态、日志、轨迹、录像或已使用/废弃题目。
+`ready-tasks.json` 是导出时处于 `ready`、尚未绑定 Pair 的题目快照。它只含题面、验收要求、分类/难度、评估元数据，以及 Feature/Bug 题所需的基线仓库 URL 与精确提交 SHA。
+
+`completed-prompt-dedup.json` 单独保存已完成 Pair 对应的题面。新电脑把它们导入为 `archived_dedup`，只供出题去重，不会排队、创建 Pair 或充当可用题目。归档里没有产物代码、A/B 答卷、评价或提交记录。两个文件都不含原数据库、日志、轨迹或录像；失败、废弃和未完成题目不迁移。
 
 新电脑先克隆本私有仓库并完成程序安装；不要复制旧电脑的 `.data` 或 `projects` 目录。然后在仓库根目录执行：
 
 ```bash
 python3 scripts/migrate_ready_tasks.py import \
   --bundle migration/ready-tasks.json \
+  --archive-bundle migration/completed-prompt-dedup.json \
   --db .data/pairwise.db \
   --baseline-dir .data/task-baselines
 ```
@@ -18,7 +21,8 @@ python3 scripts/migrate_ready_tasks.py import \
 ```bash
 python3 scripts/migrate_ready_tasks.py export \
   --db '/Users/niuyuhang/Library/Application Support/Claude A-B GSB Console/.data/pairwise.db' \
-  --output migration/ready-tasks.json
+  --output migration/ready-tasks.json \
+  --archive-output migration/completed-prompt-dedup.json
 ```
 
 导出会重新检查每道题的状态和本地精确基线提交；不能远端重建的题目会使导出失败，不会悄悄把不可用题算进库存。题目池会继续运行，因此这个快照只代表导出时刻，不保证明天仍未被使用。

@@ -31,6 +31,10 @@ TASK_FIELDS = (
     "repair_verification_json", "baseline_repo_url", "baseline_sha",
     "fingerprint",
 )
+ARCHIVE_FIELDS = (
+    "id", "task_type", "title", "prompt", "stack", "project_category",
+    "acceptance_json", "difficulty", "baseline_sha", "fingerprint", "created_at",
+)
 JSON_FIELDS = (
     "acceptance_json", "difficulty_evidence_json", "estimate_work_items_json",
     "complexity_axes_json", "repair_verification_json",
@@ -69,7 +73,7 @@ def _check_task(task, local_path=""):
             _git("-C", path, "cat-file", "-e", task["baseline_sha"] + "^{commit}")
 
 
-def export_tasks(db_path, output):
+def export_tasks(db_path, output, archive_output=None):
     source = sqlite3.connect("file:%s?mode=ro" % db_path, uri=True)
     source.row_factory = sqlite3.Row
     try:
@@ -83,6 +87,25 @@ def export_tasks(db_path, output):
             task = {field: row[field] for field in TASK_FIELDS}
             _check_task(task, row["baseline_path"])
             tasks.append(task)
+        archived = []
+        if archive_output:
+            completed = source.execute(
+                """SELECT DISTINCT t.* FROM tasks t JOIN pairs p ON p.task_id=t.id
+                     WHERE p.status='completed' ORDER BY t.created_at,t.id"""
+            ).fetchall()
+            for row in completed:
+                item = {field: row[field] for field in ARCHIVE_FIELDS}
+                if not item["prompt"].strip():
+                    raise ValueError("已完成题目缺少题面：%s" % item["id"])
+                # The stored fingerprint can predate a corrected prompt. For
+                # deduplication, index the final task text, not that stale key.
+                item["fingerprint"] = fingerprint(
+                    item["task_type"], item["prompt"], item["baseline_sha"]
+                )
+                json.loads(item["acceptance_json"])
+                archived.append(item)
+            if len({item["fingerprint"] for item in archived}) != len(archived):
+                raise ValueError("已完成题目归档含重复指纹")
     finally:
         source.close()
     payload = {
@@ -94,6 +117,14 @@ def export_tasks(db_path, output):
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print("导出 %d 道 ready、未绑定 Pair 的题目：%s" % (len(tasks), output))
+    if archive_output:
+        archive_output = Path(archive_output)
+        archive_output.parent.mkdir(parents=True, exist_ok=True)
+        archive_output.write_text(json.dumps({
+            "format": "claude-pairwise-completed-dedup-v1",
+            "exported_at": payload["exported_at"], "tasks": archived,
+        }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print("导出 %d 道已完成题面的只读去重索引：%s" % (len(archived), archive_output))
 
 
 def _clone_url(url, transport):
@@ -102,7 +133,31 @@ def _clone_url(url, transport):
     return url
 
 
-def import_tasks(bundle, db_path, baseline_dir, apply, transport):
+def _read_archive(archive_bundle):
+    if not archive_bundle:
+        return []
+    payload = json.loads(Path(archive_bundle).read_text(encoding="utf-8"))
+    if payload.get("format") != "claude-pairwise-completed-dedup-v1":
+        raise ValueError("已完成题面归档格式不受支持")
+    tasks = payload.get("tasks")
+    if not isinstance(tasks, list):
+        raise ValueError("已完成题面归档格式错误")
+    seen = set()
+    for task in tasks:
+        if not isinstance(task, dict) or set(task) != set(ARCHIVE_FIELDS):
+            raise ValueError("已完成题面归档含非题目字段")
+        if not task["prompt"].strip() or task["fingerprint"] != fingerprint(
+            task["task_type"], task["prompt"], task["baseline_sha"]
+        ):
+            raise ValueError("已完成题面或指纹无效：%s" % task["id"])
+        if task["id"] in seen:
+            raise ValueError("已完成题目 ID 重复：%s" % task["id"])
+        json.loads(task["acceptance_json"])
+        seen.add(task["id"])
+    return tasks
+
+
+def import_tasks(bundle, db_path, baseline_dir, apply, transport, archive_bundle=None):
     payload = json.loads(Path(bundle).read_text(encoding="utf-8"))
     if payload.get("format") != "claude-pairwise-ready-tasks-v1":
         raise ValueError("题目包格式不受支持")
@@ -117,8 +172,13 @@ def import_tasks(bundle, db_path, baseline_dir, apply, transport):
         if task["id"] in ids:
             raise ValueError("题目 ID 重复：%s" % task["id"])
         ids.add(task["id"])
+    archived = _read_archive(archive_bundle)
+    if any(task["id"] in ids for task in archived):
+        raise ValueError("待做题和已完成归档出现同一个 ID")
     if not apply:
-        print("检查通过：%d 道题；未写入数据库或拉取基线。加 --apply 才执行导入。" % len(tasks))
+        print("检查通过：%d 道待做题、%d 道已完成题面；未写入数据库或拉取基线。加 --apply 才执行导入。" % (
+            len(tasks), len(archived)
+        ))
         return
 
     db_path = Path(db_path).expanduser().resolve()
@@ -136,10 +196,17 @@ def import_tasks(bundle, db_path, baseline_dir, apply, transport):
         if task["task_type"] != "zero_to_one":
             baseline_dir.mkdir(parents=True, exist_ok=True)
             path = baseline_dir / task["id"]
-            if not path.exists():
-                _git("clone", "--no-checkout", _clone_url(task["baseline_repo_url"], transport), path)
-            if not path.is_dir():
-                raise RuntimeError("基线路径被占用：%s" % path)
+            clone_url = _clone_url(task["baseline_repo_url"], transport)
+            newly_cloned = not path.exists()
+            if newly_cloned:
+                _git("clone", "--no-checkout", clone_url, path)
+            if not (path / ".git").is_dir():
+                raise RuntimeError("基线路径不是预期的 Git 仓库：%s" % path)
+            current_url = _git("-C", path, "remote", "get-url", "origin")
+            if current_url != clone_url or (not newly_cloned and _git(
+                "-C", path, "status", "--porcelain"
+            )):
+                raise RuntimeError("已有基线仓库的远端不符或含未提交修改：%s" % path)
             _git("-C", path, "cat-file", "-e", task["baseline_sha"] + "^{commit}")
             _git("-C", path, "checkout", "--detach", task["baseline_sha"])
             baseline_path = str(path)
@@ -163,6 +230,26 @@ def import_tasks(bundle, db_path, baseline_dir, apply, transport):
         db.execute("INSERT INTO tasks(%s) VALUES(%s)" % (",".join(columns), placeholders),
                    tuple(values[column] for column in columns))
         print("已导入：%s" % task["id"])
+    archived_count = 0
+    for task in archived:
+        if db.one("SELECT id FROM tasks WHERE id=? OR fingerprint=?", (
+            task["id"], task["fingerprint"]
+        )):
+            continue
+        columns = (
+            "id", "source", "source_id", "task_type", "title", "prompt", "stack",
+            "project_category", "acceptance_json", "difficulty", "baseline_sha",
+            "fingerprint", "status", "created_at", "updated_at",
+        )
+        values = {
+            **task, "source": "migration_archive", "source_id": task["id"],
+            "status": "archived_dedup", "updated_at": now_iso(),
+        }
+        db.execute("INSERT INTO tasks(%s) VALUES(%s)" % (
+            ",".join(columns), ",".join("?" for _ in columns)
+        ), tuple(values[column] for column in columns))
+        archived_count += 1
+    print("已导入 %d 道已完成题面，仅用于查重，不进入待做题池。" % archived_count)
     print("导入结束；未复制原数据库、Pair、日志或录像。")
 
 
@@ -172,17 +259,20 @@ def main():
     export = sub.add_parser("export")
     export.add_argument("--db", type=Path, required=True)
     export.add_argument("--output", type=Path, required=True)
+    export.add_argument("--archive-output", type=Path)
     importer = sub.add_parser("import")
     importer.add_argument("--bundle", type=Path, required=True)
+    importer.add_argument("--archive-bundle", type=Path)
     importer.add_argument("--db", type=Path, required=True)
     importer.add_argument("--baseline-dir", type=Path, required=True)
     importer.add_argument("--transport", choices=("ssh", "https"), default="ssh")
     importer.add_argument("--apply", action="store_true")
     args = parser.parse_args()
     if args.action == "export":
-        export_tasks(args.db, args.output)
+        export_tasks(args.db, args.output, args.archive_output)
     else:
-        import_tasks(args.bundle, args.db, args.baseline_dir, args.apply, args.transport)
+        import_tasks(args.bundle, args.db, args.baseline_dir, args.apply, args.transport,
+                     args.archive_bundle)
 
 
 if __name__ == "__main__":
