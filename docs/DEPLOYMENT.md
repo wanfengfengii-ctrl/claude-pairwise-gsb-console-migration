@@ -55,10 +55,10 @@ docker image inspect claude-eval-runtime:claude-2.1.269
 
 ## 3. 全新安装
 
-这次只迁移程序及题目，请以本私有迁移仓库的[题目迁移步骤](../migration/README.md)为准，先导入题目包再安装服务。不要克隆旧的公开仓库或复制旧电脑的 `.data`、`projects`。
+这次只迁移程序及题目，请以本公开迁移仓库的[题目迁移步骤](../migration/README.md)为准，先导入题目包再安装服务。不要克隆旧仓库或复制旧电脑的 `.data`、`projects`。
 
 ```bash
-git clone git@github.com:wanfengfengii-ctrl/claude-pairwise-gsb-console-migration.git
+git clone https://github.com/wanfengfengii-ctrl/claude-pairwise-gsb-console-migration.git
 cd claude-pairwise-gsb-console-migration
 python3 scripts/migrate_ready_tasks.py import \
   --bundle migration/ready-tasks.json \

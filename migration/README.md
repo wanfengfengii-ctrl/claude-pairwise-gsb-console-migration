@@ -1,11 +1,10 @@
 # 新电脑迁移：程序、可用题目与已完成题面去重
 
-本私有仓库是迁移快照。它不包含旧电脑的数据库、A/B 产物、答卷、评价、日志、轨迹或录像；也不包含账号凭据。先在新电脑登录有权访问本仓库及各题基线仓库的 GitHub 账号，再克隆：
+本公开仓库是迁移快照。程序代码、可用题面和已完成题面的去重归档可被任何人查看；它不包含旧电脑的数据库、A/B 产物、答卷、评价、日志、轨迹、录像或账号凭据。新电脑可直接克隆；Feature/Bug 题的基线仓库仍需具备相应访问权限：
 
 ```bash
-git clone git@github.com:wanfengfengii-ctrl/claude-pairwise-gsb-console-migration.git
+git clone https://github.com/wanfengfengii-ctrl/claude-pairwise-gsb-console-migration.git
 cd claude-pairwise-gsb-console-migration
-gh auth status
 ```
 
 `ready-tasks.json` 是导出时处于 `ready`、尚未绑定 Pair 的题目快照。它只含题面、验收要求、分类/难度、评估元数据，以及 Feature/Bug 题所需的基线仓库 URL 与精确提交 SHA。
