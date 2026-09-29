@@ -1,0 +1,15 @@
+.data/
+__pycache__/
+*.pyc
+.DS_Store
+projects/
+dist/
+node_modules/
+.pytest_cache/
+*.db
+*.sqlite
+*.sqlite3
+*.jsonl
+*.mov
+*.mp4
+*.webm

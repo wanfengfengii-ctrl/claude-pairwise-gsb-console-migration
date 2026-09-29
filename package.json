@@ -1,0 +1,17 @@
+{
+  "name": "claude-pairwise-gsb-console",
+  "version": "1.0.0",
+  "description": "独立的 Claude A/B 双终端开发、Docker 验收、浏览器录像、Codex GSB 评价和 SOLO-QA 提交系统。",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --check scripts/browser_recorder.mjs && node --check scripts/recording_timing.mjs && node --check web/app.js && node --check chrome-solo-qa-gsb-helper/background.js && node --test tests/*.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ffmpeg-static": "^5.2.0",
+    "playwright": "^1.63.0"
+  }
+}

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Claude A/B GSB Console</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/extra.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-mark">AB</span><div><strong>Pairwise Lab</strong><small>Claude 开发 · Codex 评审</small></div></div>
+    <nav id="nav">
+      <button data-page="dashboard" class="active"><span>⌂</span>数据概览</button>
+      <button data-page="tasks"><span>◇</span>题目池</button>
+      <button data-page="pairs"><span>⇄</span>A/B 项目</button>
+      <button data-page="reviews"><span>◎</span>复核与人工确认</button>
+      <button data-page="codex"><span>⌘</span>Codex 作业</button>
+      <button data-page="bugs"><span>⌕</span>Bug 复现</button>
+      <button data-page="evidence"><span>▣</span>验收与录像</button>
+      <button data-page="exports"><span>⇧</span>导出轮次</button>
+      <button data-page="settings"><span>⚙</span>系统设置</button>
+    </nav>
+    <div class="runtime-card">
+      <div><span class="pulse"></span>系统在线</div>
+      <small id="runtime-summary">正在读取运行环境</small>
+    </div>
+  </aside>
+  <main>
+    <header>
+      <div><p class="eyebrow">A/B PAIRWISE EVALUATION</p><h1 id="page-title">数据概览</h1></div>
+      <div class="header-actions">
+        <div class="pair-locator"><input id="pair-locator" autocomplete="off" placeholder="输入 Pair 唯一 ID"><button class="secondary" id="locate-pair">定位 Pair</button></div>
+        <span class="clock" id="clock"></span><button class="secondary" id="refresh">刷新数据</button>
+      </div>
+    </header>
+    <div id="notice" class="notice hidden"></div>
+    <div id="recording-control" class="recording-control hidden" aria-live="polite"></div>
+    <section id="content" aria-live="polite"></section>
+  </main>
+  <dialog id="dialog"><form method="dialog"><button class="dialog-close" value="cancel">×</button><div id="dialog-content"></div></form></dialog>
+  <script src="/app.js"></script>
+</body>
+</html>

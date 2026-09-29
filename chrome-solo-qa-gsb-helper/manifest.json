@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Pairwise GSB → SOLO-QA",
+  "version": "1.0.10",
+  "description": "将本地 A/B Pair 的题面、双轨迹、双产物、双录像与 GSB 结论提交到 SOLO-QA。",
+  "permissions": ["scripting", "storage"],
+  "host_permissions": [
+    "http://127.0.0.1:8865/*",
+    "https://solo2.jzxhnh.com/*"
+  ],
+  "background": {"service_worker": "background.js"},
+  "content_scripts": [
+    {
+      "matches": ["http://127.0.0.1:8865/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

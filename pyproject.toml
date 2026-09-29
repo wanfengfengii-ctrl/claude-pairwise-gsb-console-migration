@@ -1,0 +1,11 @@
+[project]
+name = "claude-pairwise-gsb-console"
+version = "0.1.0"
+description = "A/B Claude development and Codex CLI GSB evaluation console"
+requires-python = ">=3.9"
+
+[project.scripts]
+pairwise-console = "pairwise_console.main:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
