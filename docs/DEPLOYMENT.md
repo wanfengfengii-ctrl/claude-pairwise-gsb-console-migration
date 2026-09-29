@@ -55,9 +55,17 @@ docker image inspect claude-eval-runtime:claude-2.1.269
 
 ## 3. 全新安装
 
+这次只迁移程序及题目，请以本私有迁移仓库的[题目迁移步骤](../migration/README.md)为准，先导入题目包再安装服务。不要克隆旧的公开仓库或复制旧电脑的 `.data`、`projects`。
+
 ```bash
-git clone https://github.com/chijiangmiao-source/claude-pairwise-gsb-console.git
-cd claude-pairwise-gsb-console
+git clone git@github.com:wanfengfengii-ctrl/claude-pairwise-gsb-console-migration.git
+cd claude-pairwise-gsb-console-migration
+python3 scripts/migrate_ready_tasks.py import \
+  --bundle migration/ready-tasks.json \
+  --archive-bundle migration/completed-prompt-dedup.json \
+  --db "$HOME/Library/Application Support/Claude A-B GSB Console/.data/pairwise.db" \
+  --baseline-dir "$HOME/Library/Application Support/Claude A-B GSB Console/.data/task-baselines" \
+  --apply
 chmod +x scripts/*.sh
 ./scripts/install_launch_agent.sh
 ```
@@ -121,18 +129,9 @@ PAIRWISE_OLD_DB=/absolute/path/to/console.db
 
 新生成的 0–1 与 Feature 采用旧系统的范围预算和可读性校验：一个工程核心、一条主流程、3～4 个实现模块，题面保持 4～6 句且限制单句长度与分号数量。服务升级时只会停用尚未开始、且明显超过当前范围预算的自动生成题；已经进入 Pair 的开发、轨迹和产物不受影响。
 
-## 6. 数据迁移
+## 6. 题目迁移范围
 
-只部署程序时建议在目标电脑使用新数据库，不复制原电脑的数据。
-
-如确实要整体迁移，先在原电脑停止服务并复制整个目录：
-
-```bash
-launchctl bootout "gui/$(id -u)/com.local.claude-pairwise-gsb-console"
-ditto "$HOME/Library/Application Support/Claude A-B GSB Console" /path/to/backup
-```
-
-数据库保存了项目、录像和轨迹的绝对路径。目标电脑的用户名或目录不同，直接复制后这些历史路径不会自动生效；应保持相同目录，或在迁移前单独制定路径重写与文件校验方案。不能只复制 `pairwise.db` 而遗漏 `.data/recordings`、`.data/claude-runs` 和 `projects`。
+本次迁移在目标电脑创建新数据库，只导入 `migration/ready-tasks.json` 中未使用的可用题目，以及 `migration/completed-prompt-dedup.json` 中已完成题面的只读去重索引。具体检查、导入和复核命令见[题目迁移说明](../migration/README.md)。不要复制原电脑的 `pairwise.db`、`projects`、录像或轨迹；它们包含与旧电脑绑定的绝对路径，也不在本次授权范围内。Feature/Bug 题的基线代码按仓库 URL 与提交 SHA 从 GitHub 获取，不随题目包上传。
 
 ## 7. 升级
 

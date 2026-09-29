@@ -7586,30 +7586,43 @@ class PairwiseService:
                                at: Optional[datetime] = None) -> str:
         """Guard the observed G18 daily quota without changing evidence-based scores.
 
-        The platform first reported this quota at its tenth daily record. Count
-        all locally known remote submissions, including discarded ones, so an
-        uncertain platform denominator cannot make our check optimistically
-        permit another double-full submission.
+        The platform first reported this quota at its tenth daily record. Use
+        all known submissions and in-flight new submissions to reach that
+        threshold, but exclude discarded non-full rows from the ratio's
+        denominator. Keep discarded double-full rows in the numerator until
+        the platform's exact denominator is known.
         """
         if (a_score, b_score) != (5, 5):
             return ""
         day = (at or datetime.now(timezone.utc)).astimezone(ZoneInfo("Asia/Shanghai")).date()
         rows = self.db.all(
-            """SELECT d.pair_id,d.submitted_at,g.a_score_delivery,g.b_score_delivery
+            """SELECT d.pair_id,d.status,d.submitted_at,d.updated_at,
+                      g.a_score_delivery,g.b_score_delivery
                  FROM delivery_submissions d JOIN gsb_reviews g ON g.pair_id=d.pair_id
-                WHERE d.remote_id<>'' AND d.pair_id<>? AND d.submitted_at IS NOT NULL""",
+                WHERE d.pair_id<>? AND ((d.remote_id<>'' AND d.submitted_at IS NOT NULL)
+                      OR (d.remote_id='' AND d.status='submitting'))""",
             (pair_id,),
         )
-        daily = [row for row in rows if self._solo_qa_submission_day(row["submitted_at"]) == day]
+        submitted_today = [
+            row for row in rows
+            if self._solo_qa_submission_day(row["submitted_at"] or row["updated_at"]) == day
+        ]
+        daily = [
+            row for row in submitted_today
+            if (row["status"] != "discarded" or (
+                int(row["a_score_delivery"] or 0) == 5 and int(row["b_score_delivery"] or 0) == 5
+            ))
+        ]
         projected_total = len(daily) + 1
         projected_double_full = 1 + sum(
             int(row["a_score_delivery"] or 0) == 5 and int(row["b_score_delivery"] or 0) == 5
             for row in daily
         )
-        if projected_total < 10 or projected_double_full * 10 <= projected_total:
+        if len(submitted_today) + 1 < 10 or projected_double_full * 10 <= projected_total:
             return ""
         return (
-            "G18 当日双侧满分占比超限：本地已记录当天 %d 条远端提交，其中 %d 条 A/B 均为 5 分；"
+            "G18 当日双侧满分占比超限：按保守口径，本地已记录当天 %d 条提交或提交中记录，"
+            "其中 %d 条 A/B 均为 5 分；"
             "本条仍为双侧 5 分，提交后预计超过 10%%。请核实平台当日配额；"
             "系统不会为绕过规则自动改分。" % (len(daily), projected_double_full - 1)
         )
@@ -8313,6 +8326,17 @@ class PairwiseService:
         current = self.db.one("SELECT * FROM delivery_submissions WHERE pair_id=?", (pair_id,)) or {}
         incoming_remote_id = cleaned("remote_id", 128)
         current_remote_id = str(current.get("remote_id") or "")
+        if status == "submitting" and not (incoming_remote_id or current_remote_id):
+            review = self.db.one(
+                "SELECT a_score_delivery,b_score_delivery FROM gsb_reviews WHERE pair_id=?",
+                (pair_id,),
+            ) or {}
+            quota_issue = self._g18_double_full_issue(
+                pair_id, int(review.get("a_score_delivery") or 0),
+                int(review.get("b_score_delivery") or 0),
+            )
+            if quota_issue:
+                raise ValueError(quota_issue)
         if current_remote_id and incoming_remote_id and incoming_remote_id != current_remote_id:
             raise ValueError(
                 "该 Pair 已绑定 SOLO-QA #%s，禁止改绑为 #%s；请同步原记录或走返修"

@@ -133,6 +133,16 @@ def _clone_url(url, transport):
     return url
 
 
+def _canonical_repo_url(url):
+    """Compare GitHub remotes even when Git rewrites SSH to HTTPS."""
+    value = str(url or "").strip()
+    for prefix in ("git@github.com:", "ssh://git@github.com/"):
+        if value.startswith(prefix):
+            value = "https://github.com/" + value[len(prefix):]
+            break
+    return value.rstrip("/").removesuffix(".git").casefold()
+
+
 def _read_archive(archive_bundle):
     if not archive_bundle:
         return []
@@ -203,7 +213,7 @@ def import_tasks(bundle, db_path, baseline_dir, apply, transport, archive_bundle
             if not (path / ".git").is_dir():
                 raise RuntimeError("基线路径不是预期的 Git 仓库：%s" % path)
             current_url = _git("-C", path, "remote", "get-url", "origin")
-            if current_url != clone_url or (not newly_cloned and _git(
+            if _canonical_repo_url(current_url) != _canonical_repo_url(clone_url) or (not newly_cloned and _git(
                 "-C", path, "status", "--porcelain"
             )):
                 raise RuntimeError("已有基线仓库的远端不符或含未提交修改：%s" % path)

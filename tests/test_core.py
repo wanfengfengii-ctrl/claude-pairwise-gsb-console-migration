@@ -4909,6 +4909,15 @@ curl -X POST http://localhost:${HOST_PORT:-8000}/api/v1/adjudicate \\
                VALUES(?,?,'qc_passed',?,?,?,?)""",
             ("delivery-g18-08", "pair-g18-08", "19008", "2026-09-29T10:00:00", stamp, stamp),
         )
+        self.db.execute(
+            """UPDATE delivery_submissions SET status='submitting',remote_id='',submitted_at=NULL,
+               updated_at='2026-09-29T10:00:00+00:00' WHERE pair_id='pair-g18-08'""",
+        )
+        self.assertIn("G18", self.service._g18_double_full_issue(candidate["id"], 5, 5, fixed_now))
+        self.db.execute(
+            """UPDATE delivery_submissions SET status='qc_passed',remote_id='19008',
+               submitted_at='2026-09-29T10:00:00' WHERE pair_id='pair-g18-08'""",
+        )
         self.db.execute("UPDATE gsb_reviews SET b_score_delivery=4 WHERE pair_id='pair-g18-00'")
         self.assertEqual(self.service._g18_double_full_issue(candidate["id"], 5, 5, fixed_now), "")
         self.db.execute("UPDATE gsb_reviews SET b_score_delivery=5 WHERE pair_id='pair-g18-00'")
@@ -4925,6 +4934,13 @@ curl -X POST http://localhost:${HOST_PORT:-8000}/api/v1/adjudicate \\
             preflight = self.service.delivery_preflight(candidate["id"])
         self.assertIn("G18 配额测试拦截", preflight["blockers"])
         quota.assert_called_once_with(candidate["id"], 5, 5)
+        with patch.object(self.service, "_g18_double_full_issue", return_value="G18 配额测试拦截"):
+            with self.assertRaisesRegex(ValueError, "G18 配额测试拦截"):
+                self.service.update_solo_qa_state({"pair_id": candidate["id"], "status": "submitting"})
+        self.assertNotEqual(
+            (self.db.one("SELECT status FROM delivery_submissions WHERE pair_id=?", (candidate["id"],)) or {})
+            .get("status"), "submitting",
+        )
 
     def test_delivery_preflight_allows_style_suggestion_but_blocks_fact_conflict(self):
         self.insert_ready_task()

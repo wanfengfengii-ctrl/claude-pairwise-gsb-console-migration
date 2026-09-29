@@ -1,6 +1,6 @@
 {
   "format": "claude-pairwise-ready-tasks-v1",
-  "exported_at": "2026-09-29T11:38:48+00:00",
+  "exported_at": "2026-09-29T12:12:12+00:00",
   "tasks": [
     {
       "id": "task-dc8840e344984c31",
@@ -126,6 +126,31 @@
       "baseline_repo_url": "",
       "baseline_sha": "",
       "fingerprint": "1618900917a1ba8282811c3a7ff0494e1bf750de1605ce516ac34b8db6187c2a"
+    },
+    {
+      "id": "task-55d0814e01af4bfe",
+      "task_type": "zero_to_one",
+      "title": "海上油样转运的温控链连续暴露审计台",
+      "prompt": "海上平台把油样转运至岸基实验室前，质控员需核查运输箱在采样点之间是否曾连续超过保存温度，不能因每个上传读数都未超限就忽略途中升温造成的样品失效。她在页面录入按时间严格递增的4至30个箱温、环境温和箱盖状态记录，并填写箱体热惯性、允许箱温、允许连续暴露时长及环境温度在相邻记录间线性变化的约定，提交后查看箱温连续曲线、各段解析极值、累计暴露区间和首个失效时刻。服务端须以同一阶热响应模型连续求解每段箱温，准确处理阈值穿越、箱盖开启时热惯性切换和跨记录延续的暴露时长，不得按离散采样点或数值步进近似裁决；前端通过真实业务API展示放行、拒收或数据不合法及对应证据。应用从空仓库交付为全栈项目，Dockerfile与Docker Compose 启动可由宿主机环境变量配置端口且带健康检查的应用。并让 Compose 中一次性 verify 服务在健康后执行代码测试、前端构建和温控审计API冒烟后自行退出并以退出码报告结果。若存在任一连续超温区间，报告必须指出它的起止时刻、持续时间及最早使油样失效的时间。",
+      "stack": "Python 3.13, FastAPI, TypeScript, React",
+      "project_category": "全栈",
+      "acceptance_json": "[\"在页面录入全程低于阈值的记录后，提交可显示放行结论及每段温度证据。\", \"录入两个记录点均低于阈值但中段因环境和热惯性形成连续超温的场景后，结果显示拒收、超温区间与最早失效时刻。\", \"在箱盖开启后跨多个记录段持续超温的场景中，结果将暴露时长连续累计，而非在记录边界重置。\", \"时间未严格递增、热惯性非法或箱盖状态不合法时，页面保留输入并显示明确的字段错误，旧结论不再展示。\", \"通过 Compose 启动后，应用健康检查可用，verify 服务完成温控审计API冒烟、代码测试和构建并以成功退出码结束。\"]",
+      "difficulty": "困难",
+      "difficulty_evidence_json": "[\"最小正确实现必须在分段线性环境温度与箱盖切换的热惯性下连续求解一阶热响应，精确定位阈值穿越与段内极值，并把跨段超温区间合并后计算最早失效时刻；离散采样或固定步进不能满足验收。\", \"空基线不存在可复用的连续物理状态、解析求根或暴露区间状态机；该同一主难点需贯穿热模型求解、超温证据归并、业务 API 契约及前端结果呈现四个模块，非普通 CRUD 或直接循环。\"]",
+      "estimated_module_count": 0,
+      "estimated_source_lines_min": 0,
+      "estimated_source_lines_max": 0,
+      "estimated_minutes_min": 140,
+      "estimated_minutes_max": 170,
+      "reviewed_minutes_min": 124,
+      "reviewed_minutes_max": 157,
+      "estimate_work_items_json": "[{\"name\": \"理解业务与空基线确认\", \"phase\": \"development\", \"minMinutes\": 10, \"maxMinutes\": 15, \"basis\": \"确认空仓库无可复用机制，明确记录字段、分段箱盖热惯性语义、连续暴露边界及证据输出契约。\"}, {\"name\": \"关键实现：连续温控审计算法与全栈联调\", \"phase\": \"development\", \"minMinutes\": 68, \"maxMinutes\": 82, \"basis\": \"实现分段线性环境下的一阶热响应、解析极值和阈值穿越判定、跨段暴露归并及最早失效计算，并接入 FastAPI 与 React 草稿/结果状态。\"}, {\"name\": \"开发侧本地代码回归\", \"phase\": \"development\", \"minMinutes\": 20, \"maxMinutes\": 26, \"basis\": \"覆盖全程安全、段内超温、箱盖切换跨段累计、非法输入及阈值临界的业务模块与 API 冒烟，并执行前端构建。\"}, {\"name\": \"Dockerfile、Compose、verify 交付及清洁 Docker 验收\", \"phase\": \"docker_delivery\", \"minMinutes\": 26, \"maxMinutes\": 34, \"basis\": \"交付可配置端口、健康检查、依赖健康后自动退出的 verify 服务，并从清洁 Compose 启动复验构建、测试和温控 API 场景。\"}]",
+      "estimate_risk": "",
+      "complexity_axes_json": "[]",
+      "repair_verification_json": "[]",
+      "baseline_repo_url": "",
+      "baseline_sha": "",
+      "fingerprint": "553d516f24666eeaa1cbcef6dc4727686cad10ecb16f8ff0355469f50a899ab8"
     }
   ]
 }
